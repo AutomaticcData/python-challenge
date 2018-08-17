@@ -3,17 +3,25 @@
 Created on Sun Aug 12 23:54:17 2018
 
 @author: anthony alvarez
+The total number of months included in the dataset
+The total net amount of "Profit/Losses" over the entire period
+The average change in "Profit/Losses" between months over the entire period
+The greatest increase in profits (date and amount) over the entire period
+The greatest decrease in losses (date and amount) over the entire period
+8/15/2018 changed variable names and use of for loops
+8/16/2018 added lists and dictionaries to hold data
+8/17/2018 reworked code due to wrong referenced field for greatest/least change
+
 """
 
+#************IMPORTS*******************************************
 #import the os Module
 import os
 
 #import the csv csvreader
 import csv
 
-
-
-#*** define the function here ********
+#************FUNCTIONS*****************************************
 def my_average(num_list):
     #the number to divide by
     num_divisor = len(num_list)
@@ -45,32 +53,36 @@ def fix_yearmonth(ym_val):
     return ym_text
 
 
-#*******************************************************
+#clean a key value string from a dictionary
+def clean_keyvalue(dirtystring):
+    dirtystring = dirtystring.replace("['","")
+    dirtystring = dirtystring.replace("']","")
+    cleanstring = dirtystring
+    return cleanstring
+
+#************VARIABLES******************************************
 #set aside variable as not to confuse myself later
 
-#lists for columns to zip later
-col_dates = []
-col_revenue = []
+#dictionaries
+greaterchange = {}
+leastchange = {}
 
-#total amounts
+#lists
 totals = []
+poschange = []
+negchange = []
+revenue_changes = []
 
-#profit/losses variable
-profit = []
-losses = []
+#vars
+tamount = 0
+tprofit = 0
+tloss = 0   
 
-#greater/least profits/losses
-gprofit = 0
-gloss = 0
-gc_text = ""
-gl_text = ""
+changeinnumber = 0
+newnumber = 0
+originalnumber = 0    
 
-begin_date = ""
-end_date = ""
-
-#*******************************************************
-
-#file name
+#************FILE OPERTATIONS*******************************
 file_name = 'budget_data.csv'
 
 #get the csv path
@@ -88,92 +100,104 @@ with open(csv_path, newline='') as csv_file:
     #get the csv data into a list
     csv_data = [row for row in csv_reader]
     
-    #not sure how to put this into a list comprehension yet
-    for revenue in csv_data:        
-        #sets the current amount of revenue
-        this_amount = float(revenue[1])
-        this_date = revenue[0]
-
-        #get both columns in lists
-        col_dates.append(this_date)
-        col_revenue.append(this_amount)
+    #get the bounds of the data
+    upperbound = len(csv_data)
+      
+    for i in range(upperbound):
+        #set the current revenue amount
+        current_revenue = float(csv_data[i][1])
         
         #add it to the totals list
-        totals.append(this_amount)
+        totals.append(current_revenue)
         
-        if this_amount > 0:
-            profit.append(this_amount)
-            #print(str(this_amount))
+        
+        #sum of the revenue amounts
+        tamount += current_revenue
+        
+        #get values for positive and negative revenue
+        if current_revenue>0:
+            tprofit += current_revenue
+        else:
+            tloss += current_revenue
+    
+
+        #current revenue value
+        newnumber = float(csv_data[i][1])
+        
+        #revenue date
+        revenue_date = csv_data[i][0]
+        
+        #change in revenue
+        if i == 0: 
+        #or i == upperbound-1:
+            #only if we are at the first record, then there was no change            
+            originalnumber = float(0)
+            changeinnumber = float(0)
             
-        if this_amount <= 0:
-            losses.append(this_amount)
-            #print(str(this_amount))
+            #all ther rows that arent first or last
+        else:   
+            #if not (i == 0) and not (i >= upperbound-1):    
+            #previous revenue value
+            originalnumber = float(csv_data[i-1][1])
+            changeinnumber = float(newnumber) - float(originalnumber)
+            
+        
+        #get a list of the revenue changes month to month
+        revenue_changes.append(changeinnumber)
+        
+        #print(f'{tpos} = Current: {current_revenue}    |   Next:{next_revenue}   |   Change:{changeinrevenue}')
+        #print(f'Current: {originalnumber}    |   Next:{newnumber}   |   Change:{changeinnumber}')
 
-        if this_amount > 0 and gprofit ==0:
-            gprofit = this_amount
-        else:
-            if this_amount > gprofit:
-                gprofit = this_amount
-                gc_text = f'{this_date} ({pretty_money(gprofit)})'
-                
-        if this_amount < 0 and gloss ==0:
-            gloss = this_amount
-        else:
-            if this_amount < gloss:
-                gloss = this_amount
-                gl_text = f'{this_date} ({pretty_money(gloss)})'
+        #indicates a positve change
+        if changeinnumber > 0:
+            poschange.append(changeinnumber)
+            greaterchange.update({revenue_date: changeinnumber})
+        #negative change
+        elif changeinnumber <0:
+            negchange.append(changeinnumber)
+            leastchange.update({revenue_date: changeinnumber})
 
-
-#***************************************************************
-#Tidy up the data
-                
 #get the number of months
 total_months = len(csv_data)
-            
 #total net profit/losses
-#https://stackoverflow.com/questions/4362586/sum-a-list-of-numbers-in-python
-n_profits = sum(profit)
-n_losses = sum(losses)
-
-#total net amount formula (could be put in a function)
-total_net_amount = (n_profits - n_losses)
-
-#format as a nice currency string
-#'${:,.2f}'.format(xxxxxx)
-#https://stackoverflow.com/questions/21208376/converting-float-to-dollars-and-cents
-#text_total_net_amount = '${:,.2f}'.format(total_net_amount)
-#using the new function
-text_total_net_amount = pretty_money(total_net_amount)
-    
-#average change in profits/losses
-#pass the totals list to the average function defined above
-avg_change_amount = my_average(totals)
-#text_avg_change_amount = '${:,.2f}'.format(total_net_amount)
-#using the new function
-text_avg_change_amount = pretty_money(avg_change_amount)
+total_net_amount = pretty_money(tamount)
+#average change
+average_change = my_average(revenue_changes)
 
 
+#https://stackoverflow.com/questions/42044090/return-the-maximum-value-from-a-dictionary/42044202
+#greatest increase in profits
+max_value = max(greaterchange.values())  # maximum value
+max_keys = [k for k, v in greaterchange.items() if v == max_value] # getting all keys containing the maximum
 
-#set begin and end dates for text range
-begin_date = col_dates[0].split('-')
-#begin_text = str(begin_date[0]) + ' 20' + begin_date[1]
-begin_text = fix_yearmonth(col_dates[0])
+greatestincrease_value = pretty_money(max_value)
+greatestincrease_month = fix_yearmonth(clean_keyvalue(str(max_keys)))
 
-end_date = col_dates[-1].split('-')
-end_text = str(end_date[0]) + ' 20' + end_date[1]
+#print(greatestincrease_month)
+#print(greatestincrease_value)
+#print(max_value, max_keys)
 
- 
+#greatest decrease in profits
+min_value = min(leastchange.values())  # maximum value
+min_keys = [k for k, v in leastchange.items() if v == min_value] # getting all keys containing the minimum
+
+greatestdecrease_value = pretty_money(min_value)
+greatestdecrease_month = fix_yearmonth(clean_keyvalue(str(min_keys)))
+
+gc_text = f'{greatestincrease_month} ({greatestincrease_value})'
+gl_text = f'{greatestdecrease_month} ({greatestdecrease_value})'
+
 #print out the summary to the user *********************************
 msg_output = '********************************************************|\n'
 msg_output += f'*** Financial Analysis                     *************|\n'
-msg_output += f'*** Budget Data:    {file_name}        *************|\n'
-msg_output += f'*** for the period of {begin_text} to {end_text} *************|\n'
+msg_output += f'*** Budget Data:    {file_name}        \n'
+#msg_output += f'*** for the period of {begin_text} to {end_text} *************|\n'
 msg_output += '********************************************************|\n'
 msg_output += f'Total Months: {total_months}\n'
 
-msg_output += f'Total: {text_total_net_amount}\n'
+msg_output += f'Total: {total_net_amount}\n'
 
-msg_output += f'Average Change: {text_avg_change_amount}\n'
+msg_output += f'Average Change: {pretty_money(average_change)}\n'
 
 msg_output += f'Greatest Increase in Profits: {gc_text}\n'
 
@@ -181,7 +205,6 @@ msg_output += f'Greatest Decrease in Profits: {gl_text}\n'
 msg_output += '********************************************************|\n'
 
 print(msg_output)
-
 
 
 #export this to a text file ******************************************
